@@ -5,8 +5,10 @@
 
 #### contact: taku.ito1 [at] gmail [dot] com
 
+#### Description
 Preliminary code-base. This will be continually updated for readability and access + documentation. Any questions please feel free to e-mail me (Taku).
 
+#### Organization
 fmri_analysis/ -- fMRI analysis code/scripts/notebooks
 
 glmScripts/ -- fMRI postprocessing + task GLMs
