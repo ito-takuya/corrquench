@@ -1,0 +1,181 @@
+% Taku Ito
+% Analyzing Siegel et al. 2015 data set 
+% 08/10/2018
+
+%clear all; close all;
+datadir = '/projects3/NHPActFlow/data/';
+%sessionNames = {'100706'};
+sessionNames = {'100724'};
+binsize = 50; % ms
+
+for i=1:length(sessionNames)
+    
+    %% First load in session
+    %load([datadir sessionNames{i}]);
+    close all
+
+    %% 
+    % Measure the STA for each neuron in this session
+    tmin = -5000; %ms
+    tmax = 5000; %ms
+%    tmin = -2500; %ms
+%    tmax = 3500; %ms
+    timeID = tmin:binsize:tmax;
+    nBins = length(timeID);
+    nCells = size(spikeTimes,2);
+    nTrials = size(spikeTimes,1);
+    sta = zeros(nCells,nBins,nTrials);
+
+    parfor (trial=1:nTrials,20)
+%    for (trial=1:nTrials)
+        disp(['Running analysis for trial ' num2str(trial)])
+
+        tmp_parfor{trial} = zeros(nCells,nBins);
+        for cell=1:nCells
+            if ~isempty(spikeTimes{trial,cell})
+                nSpikes = length(spikeTimes{trial,cell});
+                % Place spike in sta array
+                for spike=1:nSpikes
+                    spikeTime = int16(spikeTimes{trial,cell}(spike) * 1000); % convert to ms
+                    % Find index
+                    timeInd = min(find(timeID>spikeTime));
+                    %%sta(cell,timeInd,trial) = 1;
+                    tmp_parfor{trial}(cell,timeInd) = 1;
+                end
+            end
+        end
+    end
+
+    % Create proper array
+    for trial=1:nTrials
+        sta(:,:,trial) = tmp_parfor{trial};
+    end
+
+    % Compute averaged STA for each cell, across all trials
+    sta_cellavg = mean(sta,3);
+    figure
+    imagesc(timeID,1:nCells,sta_cellavg)
+    title('STA for each cell')
+    ylabel('Cell')
+    xlabel('Time')
+    xticks = [tmin:(1000):tmax];
+    set(gca,'XTick',xticks)
+    set(gca,'xticklabels',xticks/1000)
+    
+    % compute averaged STA across all cells, trials
+    sta_allavg = mean(sta_cellavg,1);
+    figure
+    plot(timeID,sta_allavg)
+    xlabel('Time')
+    ylabel('FR')
+    title('Averaged STA across cells and trials')
+    xticks = [tmin:(1000):tmax];
+    set(gca,'XTick',xticks)
+    set(gca,'xticklabels',xticks/1000)
+
+    %% Remove STA for each cell
+    sta_removed = zeros(size(sta));
+    for cell=1:nCells
+        for trial=1:nTrials
+            sta_removed(cell,:,trial) = sta(cell,:,trial) - sta_cellavg(cell,:);
+        end
+    end
+
+    %% Compute averaged STA across all cells, trials
+    % Note: should look like white noise
+    tmp = mean(mean(sta_removed,3),1);
+    figure
+    plot(timeID,tmp)
+    xlabel('Time')
+    ylabel('FR')
+    title('Averaged signal after removing sta across cells and trials')
+    xticks = [tmin:(1000):tmax];
+    set(gca,'XTick',xticks)
+    set(gca,'xticklabels',xticks/1000)
+
+    %% Compute noise correlation before and after stimulus onset
+    % Window for prestimulus noise correlation
+    preStimStart = find(timeID==-2250); % time point to start correlation calculation
+    preStimEnd = find(timeID==-250); % time point to end correlation calculation
+    % Window for post stim onset noise correlation
+    postStimStart = find(timeID==250); % time point to start correlation calculation
+    postStimEnd = find(timeID==2250); % time point to end correlation calculation
+    
+    preStimNoiseCorr = zeros(nCells,nCells,nTrials);
+    postStimNoiseCorr = zeros(nCells,nCells,nTrials);
+    avg_corr_pre = zeros(nTrials,1);
+    avg_corr_post = zeros(nTrials,1);
+    
+    preStimNoiseSD = zeros(nCells,nTrials);
+    postStimNoiseSD = zeros(nCells,nTrials);
+    for trial=1:nTrials
+        triu_ind = find(triu(ones(nCells,nCells),1));
+        % Noise correlation calculation
+        A = corrcoef(sta_removed(:,preStimStart:preStimEnd,trial)');
+        A(logical(eye(size(A)))) = 0;
+        preStimNoiseCorr(:,:,trial) = atanh(A);
+        avg_corr_pre(trial) = mean(mean(atanh(A(triu_ind))));
+                
+        A = corrcoef(sta_removed(:,postStimStart:postStimEnd,trial)');
+        A(logical(eye(size(A)))) = 0;
+        postStimNoiseCorr(:,:,trial) = atanh(A);
+        avg_corr_post(trial) = mean(mean(atanh(A(triu_ind))));
+        
+        % SD calculation
+        preStimNoiseSD(:,trial) = std(sta_removed(:,preStimStart:preStimEnd,trial),0,2);
+        postStimNoiseSD(:,trial) = std(sta_removed(:,postStimStart:postStimEnd,trial),0,2);
+    end
+
+    clims = [-.4,.4];
+    figure
+    imagesc(mean(preStimNoiseCorr,3),clims)
+    title('Noise Correlation -- Prestimulus')
+    ylabel('Cell')
+    xlabel('Cell')
+    colorbar()
+    colormap(redblue)
+
+
+    figure
+    imagesc(mean(postStimNoiseCorr,3),clims)
+    title('Noise Correlation -- Poststimulus')
+    ylabel('Cell')
+    xlabel('Cell')
+    colorbar()
+    colormap(redblue)
+
+    figure
+    diff = mean(postStimNoiseCorr,3) - mean(preStimNoiseCorr,3);
+    [h,p,ci,stats] = ttest(postStimNoiseCorr,preStimNoiseCorr,'dim',3);
+    triu_ind = find(triu(ones(size(p)),1));
+    qthresh = FDR(p(triu_ind),.05);
+    sig_mc = p < qthresh;
+    sigdiff = sig_mc.*diff;
+    
+    imagesc(sigdiff,clims)
+    title({'Noise Correlation Post vs. Pre','FDR-corrected t-test'})
+    ylabel('Cell')
+    xlabel('Cell')
+    colorbar()
+    colormap(redblue)
+    
+    % Compute average correlation for each trial, perform t-test
+    [h, p, ci, stats] = ttest(avg_corr_post,avg_corr_pre);
+    figure
+    boxplot([avg_corr_post, avg_corr_pre],'notch','on',...
+        'labels',{'PostStim', 'PreStim'})
+    title({'PostStim NoiseCorr v. PreStim NoiseCorr',['T-value: ', num2str(stats.tstat)],['P-value: ' num2str(p)]})
+    ylabel('Average correlation')
+    xlabel('Conditions')
+    
+    % Compute average SD for each trial, perform t-test
+    [h, p, ci, stats] = ttest(mean(postStimNoiseSD,1),mean(preStimNoiseSD,1));
+    figure
+    boxplot([mean(postStimNoiseSD,1)',mean(preStimNoiseSD,1)'],'notch','on',...
+        'labels',{'PostStim','PreStim'})
+    title({'PostStim SD v. PreStim SD',['T-value: ', num2str(stats.tstat)],['P-value: ' num2str(p)]})
+    ylabel('Average SD')
+    xlabel('Conditions')
+end
+
+    

@@ -1,0 +1,29 @@
+litwin-kumar_doiron_cluster_2012
+Copyright (C) 2014 Ashok Litwin-Kumar
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+SUMMARY:
+This program implements the model of:
+A. Litwin-Kumar & B. Doiron. Slow dynamics and high variability in balanced cortical networks with clustered connections. Nature Neuroscience 15(11), 1498-1505 (2012).
+
+REQUIREMENTS:
+This program requires Julia (julialang.org). Tested on Julia 1.0.
+
+USE:
+To run the simulation, enter the command include("runsim.jl") from a Julia interactive session.  
+
+CONTACT:
+ak3625@columbia.edu
+lk.zi.columbia.edu
