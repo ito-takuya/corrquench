@@ -1,6 +1,5 @@
 # corrQuench
-#### Code for Ito, Brincat, Siegel, Mill, He, Miller, Rotstein, Cole (2020) PLoS Computational Biology
-#### "Task-evoked activity quenches neural correlations and variability across cortical areas"
+#### Code for Ito, Brincat, Siegel, Mill, He, Miller, Rotstein, Cole (2020). "Task-evoked activity quenches neural correlations and variability across cortical areas." PLoS Computational Biology
 
 
 #### contact: taku.ito1 [at] gmail [dot] com
